@@ -10,6 +10,7 @@ class Country {
   final String? flagPng;
   final List<String> currencies;
   final List<String> languages;
+  final List<String> borders;
   final String? cioc;
 
   Country({
@@ -24,6 +25,7 @@ class Country {
     required this.flagPng,
     required this.currencies,
     required this.languages,
+    required this.borders,
     required this.cioc,
   });
 
@@ -31,6 +33,7 @@ class Country {
     final flags = json['flags'] as Map<String, dynamic>?;
     final currenciesJson = (json['currencies'] as List?) ?? [];
     final languagesJson = (json['languages'] as List?) ?? [];
+    final bordersJson = (json['borders'] as List?) ?? [];
     return Country(
       name: json['name'] ?? '',
       capital: json['capital'],
@@ -49,6 +52,7 @@ class Country {
           .map((e) => (e as Map<String, dynamic>)['name'] as String?)
           .whereType<String>()
           .toList(),
+      borders: bordersJson.whereType<String>().toList(),
       cioc: json['cioc'],
     );
   }

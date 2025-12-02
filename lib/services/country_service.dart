@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
+import 'package:flutter/services.dart' show rootBundle;
 import '../models/country.dart';
 
 class CountryService {
@@ -23,6 +24,12 @@ class CountryService {
     return http.Response('CORS proxy failed', 500);
   }
 
+  Future<List<Country>> _loadLocalCountries() async {
+    final raw = await rootBundle.loadString('assets/countries.json');
+    final data = json.decode(raw) as List;
+    return data.map((e) => Country.fromJson(e as Map<String, dynamic>)).toList();
+  }
+
   Future<List<Country>> getAllCountries() async {
     final uri = Uri.parse('$baseUrl/countries');
     final res = await _getWithCors(uri);
@@ -30,7 +37,7 @@ class CountryService {
       final data = json.decode(res.body) as List;
       return data.map((e) => Country.fromJson(e as Map<String, dynamic>)).toList();
     }
-    throw Exception('Failed to load countries');
+    return _loadLocalCountries();
   }
 
   Future<List<Country>> searchByName(String name) async {
@@ -50,6 +57,27 @@ class CountryService {
       final data = json.decode(res.body) as List;
       return data.map((e) => Country.fromJson(e as Map<String, dynamic>)).toList();
     }
-    return [];
+    final all = await _loadLocalCountries();
+    final current = all.firstWhere(
+      (c) => c.name.toLowerCase() == name.toLowerCase(),
+      orElse: () => Country(
+        name: name,
+        capital: '',
+        alpha2Code: '',
+        alpha3Code: '',
+        region: '',
+        subregion: '',
+        population: 0,
+        flagSvg: null,
+        flagPng: null,
+        currencies: const [],
+        languages: const [],
+        borders: const [],
+        cioc: '',
+      ),
+    );
+    if (current.borders.isEmpty) return [];
+    final codes = current.borders.toSet();
+    return all.where((c) => codes.contains(c.alpha3Code)).toList();
   }
 }
