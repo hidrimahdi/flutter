@@ -7,22 +7,11 @@ import '../models/country.dart';
 class CountryService {
   static const String baseUrl = 'https://www.apicountries.com';
 
-  Future<http.Response> _getWithCors(Uri uri) async {
-    if (!kIsWeb) {
-      return http.get(uri).timeout(const Duration(seconds: 20));
-    }
-    final candidates = <Uri>[
-      Uri.parse('https://cors.isomorphic-git.org/${uri.toString()}'),
-      Uri.parse('https://api.allorigins.win/raw?url=${Uri.encodeComponent(uri.toString())}'),
-    ];
-    for (final u in candidates) {
-      try {
-        final res = await http.get(u).timeout(const Duration(seconds: 20));
-        if (res.statusCode == 200) return res;
-      } catch (_) {}
-    }
-    return http.Response('CORS proxy failed', 500);
+  Future<http.Response> _get(Uri uri) {
+    return http.get(uri).timeout(const Duration(seconds: 20));
   }
+
+  String _webBase() => 'http://localhost:8787';
 
   Future<List<Country>> _loadLocalCountries() async {
     final raw = await rootBundle.loadString('assets/countries.json');
@@ -31,32 +20,40 @@ class CountryService {
   }
 
   Future<List<Country>> getAllCountries() async {
-    final uri = Uri.parse('$baseUrl/countries');
-    final res = await _getWithCors(uri);
-    if (res.statusCode == 200) {
-      final data = json.decode(res.body) as List;
-      return data.map((e) => Country.fromJson(e as Map<String, dynamic>)).toList();
-    }
+    final uri = kIsWeb ? Uri.parse('${_webBase()}/countries') : Uri.parse('$baseUrl/countries');
+    try {
+      final res = await _get(uri);
+      if (res.statusCode == 200) {
+        final data = json.decode(res.body) as List;
+        return data.map((e) => Country.fromJson(e as Map<String, dynamic>)).toList();
+      }
+    } catch (_) {}
     return _loadLocalCountries();
   }
 
   Future<List<Country>> searchByName(String name) async {
-    final uri = Uri.parse('$baseUrl/name/$name');
-    final res = await _getWithCors(uri);
-    if (res.statusCode == 200) {
-      final data = json.decode(res.body) as List;
-      return data.map((e) => Country.fromJson(e as Map<String, dynamic>)).toList();
-    }
-    throw Exception('Search failed');
+    final uri = kIsWeb ? Uri.parse('${_webBase()}/name/$name') : Uri.parse('$baseUrl/name/$name');
+    try {
+      final res = await _get(uri);
+      if (res.statusCode == 200) {
+        final data = json.decode(res.body) as List;
+        return data.map((e) => Country.fromJson(e as Map<String, dynamic>)).toList();
+      }
+    } catch (_) {}
+    final all = await _loadLocalCountries();
+    return all.where((c) => c.name.toLowerCase().contains(name.toLowerCase()) ||
+        (c.capital ?? '').toLowerCase().contains(name.toLowerCase())).toList();
   }
 
   Future<List<Country>> getBorders(String name) async {
-    final uri = Uri.parse('$baseUrl/borders/$name');
-    final res = await _getWithCors(uri);
-    if (res.statusCode == 200) {
-      final data = json.decode(res.body) as List;
-      return data.map((e) => Country.fromJson(e as Map<String, dynamic>)).toList();
-    }
+    final uri = kIsWeb ? Uri.parse('${_webBase()}/borders/$name') : Uri.parse('$baseUrl/borders/$name');
+    try {
+      final res = await _get(uri);
+      if (res.statusCode == 200) {
+        final data = json.decode(res.body) as List;
+        return data.map((e) => Country.fromJson(e as Map<String, dynamic>)).toList();
+      }
+    } catch (_) {}
     final all = await _loadLocalCountries();
     final current = all.firstWhere(
       (c) => c.name.toLowerCase() == name.toLowerCase(),
